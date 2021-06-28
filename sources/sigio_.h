@@ -6,55 +6,59 @@
 #include <ratio>
 #include <chrono>
 #include <ctime>
+#include <csignal>
 #include <system_error>
 
 /* Linux system headers */
 #include <syslog.h>
 
 /* Local headers */
-#include "timer.h"
+#include "sigio.h"
 
-namespace posixcpp
+using std::chrono::seconds;
+using std::chrono::nanoseconds;
+
+namespace one
 {
-  class timer::timer_
+  class sigio::sigio_
   {
-    std::chrono::seconds _period_sec;
-    std::chrono::nanoseconds _period_nsec;
-    callback_t _callback;
-    void* _data;
-    bool _is_single_shot;
+    struct io_
+    {
+      int _flags;
+      callback_t _callback;
+      seconds _timeout_sec;
+      nanoseconds _timeout_nsec;
+    };
+
     int _signal;
-
-    struct itimerspec _ts;
-    struct sigaction _sa;
-    struct sigevent _sev;
-
-    timer_t _timer;
+    std::map<int, io_> _io_map;
 
     public:
-    static void signal_handler(int sig, siginfo_t *si, void *uc = nullptr);
+    static void sigaction_handler(int sig, siginfo_t *si, void *uc = nullptr);
+    static sigio_& get();
 
-    explicit timer_(std::chrono::seconds period_sec, std::chrono::nanoseconds period_nsec,
-        callback_t callback, void* data,
-        bool is_single_short, int sig);
+    explicit sigio_(int signal = SIGRTMIN);
 
-    ~timer_();
+    ~sigio_();
 
-    timer_(const timer_&) = delete;
-    timer_(timer_&&) = delete;
-    timer_& operator=(const timer_&) = delete;
-    timer_& operator=(timer_&&) = delete;
+    sigio_(const sigio_&) = delete;
+    sigio_(sigio_&&) = delete;
+    sigio_& operator=(const sigio_&) = delete;
+    sigio_& operator=(sigio_&&) = delete;
 
-    void start();
-    void reset();
-    void suspend();
-    void resume();
-    void stop();
+    int get_signal() const;
+    std::error_code set_signal(int sig);
 
-    std::error_code try_start() noexcept;
-    std::error_code try_reset() noexcept;
-    std::error_code try_suspend() noexcept;
-    std::error_code try_resume() noexcept;
-    std::error_code try_stop() noexcept;
+    void activate(int fd, callback_t cb,
+        seconds timeout_sec = 0s,
+        nanoseconds timeout_nsec = 0ns);
+    void deactivate(int fd);
+
+    bool is_activated(int fd) const noexcept;
+
+    std::error_code try_activate(int fd, callback_t cb,
+         seconds timeout_sec = 0s,
+         nanoseconds timeout_nsec = 0ns) noexcept;
+    std::error_code try_deactivate(int fd) noexcept;
   };
 } //namespace posixcpp

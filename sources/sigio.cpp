@@ -2,69 +2,52 @@
 #include <stdexcept>
 
 /* Local headers */
-#include "timer.h"
-#include "timer_.h"
+#include "sigio.h"
+#include "sigio_.h"
 
-namespace posixcpp
+namespace one 
 {
-  timer::timer(std::chrono::seconds period_sec, std::chrono::nanoseconds period_nsec,
-      callback_t callback, void* data, bool is_single_shot, int sig) :
-    _timer(new timer_(period_sec, period_nsec, callback, data, is_single_shot, sig))
+  sigio::sigio():
+    _sigio(&sigio_::get())
   {}
 
-  timer::~timer()
+  sigio::~sigio() {}
+
+
+  int sigio::get_signal() const
   {
-    syslog(LOG_INFO, "timer::~timer()");
+    return _sigio->get_signal();
+  }
+  
+  std::error_code sigio::set_signal(int signal)
+  {
+    return _sigio->set_signal(signal);
   }
 
-  void timer::start()
+  void sigio::activate(int fd, callback_t cb, seconds timeout_sec, nanoseconds timeout_nsec)
   {
-    _timer->start();
+    _sigio->activate(fd, cb, timeout_sec, timeout_nsec);
   }
 
-  void timer::reset()
+  void sigio::deactivate(int fd)
   {
-    _timer->reset();
+    _sigio->deactivate(fd);
   }
 
-  void timer::suspend()
+  bool sigio::is_activated(int fd) const noexcept
   {
-    _timer->suspend();
+    return _sigio->is_activated(fd);
   }
 
-  void timer::resume()
+  std::error_code sigio::try_activate(int fd, callback_t cb,
+      seconds timeout_sec, nanoseconds timeout_nsec) noexcept
   {
-    _timer->resume();
+    return _sigio->try_activate(fd, cb, timeout_sec, timeout_nsec);
   }
 
-  void timer::stop()
+  std::error_code sigio::try_deactivate(int fd) noexcept
   {
-    _timer->stop();
+    return _sigio->try_deactivate(fd);
   }
 
-  std::error_code timer::try_start() noexcept
-  {
-    return _timer->try_start();
-  }
-
-  std::error_code timer::try_reset() noexcept
-  {
-    return _timer->try_reset();
-  }
-
-  std::error_code timer::try_suspend() noexcept
-  {
-    return _timer->try_suspend();
-  }
-
-  std::error_code timer::try_resume() noexcept
-  {
-    return _timer->try_resume();
-  }
-
-  std::error_code timer::try_stop() noexcept
-  {
-    return _timer->try_stop();
-  }
-
-} //namespace posixcpp
+} //namespace one 
