@@ -18,10 +18,10 @@ namespace sigio {
   /**
    * C++17 wrapper for signal driven I/O.
    */
-  struct data  
+  struct queued_data  
   {
     std::chrono::time_point<std::chrono::steady_clock> timestamp;
-    uint8_t data;
+    uint8_t* data;
     size_t size;
   };
 
@@ -33,9 +33,21 @@ namespace sigio {
     }
   };
 
-  class write_queue : private std::priority_queue<queued_data, std::vector<uint8_t>, data_time_compare>
+  class write_queue : private std::priority_queue<queued_data, std::vector<queued_data>, data_time_compare>
   {
+    public:
+      void push(uint8_t* data, size_t size);
   };
+
+  class read_queue : private std::priority_queue<queued_data, std::vector<queued_data>, data_time_compare>
+  {
+    public:
+      void push(uint8_t* data, size_t size);
+      void push(std::vector<uint8_t>::iterator first, std::vector<uint8_t>::iterator last);
+      void push(std::vector<uint8_t> data);
+  };
+
+
 
   template<int SIGNAL>
     class controller{
