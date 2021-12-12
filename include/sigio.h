@@ -7,6 +7,8 @@
 #include <map>
 #include <system_error>
 
+// System headers
+#include <sys/inotify.h>
 
 #pragma once
 
@@ -128,15 +130,24 @@ namespace one {
     void activate(int fd, callback_t cb,
         seconds timeout_sec = 0s,
         nanoseconds timeout_nsec = 0ns);
+
+    void activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+          seconds timeout_sec = 0s,
+          nanoseconds timeout_nsec = 0ns);
+
     void deactivate(int fd);
+    void deactivate(const std::string fn);
 
     bool is_activated(int fd) const noexcept;
+    bool is_activated(const std::string fn) const noexcept;
 
-    std::error_code try_activate(int fd, callback_t cb,
-         seconds timeout_sec = 0s,
-         nanoseconds timeout_nsec = 0ns) noexcept;
+    std::error_code try_activate(int fd, callback_t cb, seconds timeout_sec = 0s,
+                                 nanoseconds timeout_nsec = 0ns) noexcept;
     std::error_code try_deactivate(int fd) noexcept;
 
+    std::error_code try_activate(const std::string fn, uint32_t inotify_mask,  callback_t cb,
+                                 seconds timeout_sec = 0s, nanoseconds timeout_nsec = 0ns) noexcept;
+    std::error_code try_deactivate(const std::string fn) noexcept;
   }; // class sigio
 
   inline std::error_code make_error_code(sigio::error err) noexcept

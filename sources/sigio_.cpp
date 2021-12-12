@@ -15,7 +15,7 @@ namespace one
   {
     int fd = si->si_fd;
     auto& inst = get();
-    if(!inst._io_map.count(fd))
+    if(!inst._io_fd.count(fd))
     {
       auto ec = make_error_code(error::sig_handler_fd_unknown);
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -23,7 +23,7 @@ namespace one
     }
     
     // get user's call-back function
-    inst._io_map[fd]._callback(si);
+    inst._io_fd[fd]._callback(si);
   }
 
   sigio::sigio_::sigio_(int sig):
@@ -57,7 +57,7 @@ namespace one
     syslog(LOG_INFO, "sigio_::~sigio_()");
 
     // deactivate and erase all I/O file descriptors
-    for(auto [fd, io]: _io_map)
+    for(auto [fd, io]: _io_fd)
     {
       auto ec = try_deactivate(fd);
       if(ec.value() != 0)
@@ -83,7 +83,7 @@ namespace one
     int ret = 0;
     int orig_flags = 0;
 
-    if(_io_map.count(fd))
+    if(_io_fd.count(fd))
     {
       auto ec = make_error_code(error::activate_already_active);
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -117,14 +117,21 @@ namespace one
 
     // the file description fd is successfully configured for signal-driven I/O
     // add it to the map of descriptors
-    _io_map[fd] = io_{orig_flags, cb, timeout_sec, timeout_nsec};
+    _io_fd[fd] = io_{orig_flags, cb, timeout_sec, timeout_nsec};
+  }
+
+  void sigio::sigio_::activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+                               seconds timeout_sec, nanoseconds timeout_nsec)
+  {
+      int fd = fn.size();
+      activate(fd, cb, timeout_sec, timeout_nsec);
   }
 
   void sigio::sigio_::deactivate(int fd)
   {
     int ret = 0;
 
-    if(!_io_map.count(fd))
+    if(!_io_fd.count(fd))
     {
       auto ec = make_error_code(error::activate_already_active);
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -132,7 +139,7 @@ namespace one
     }
 
     // restore saved flags for file descriptor
-    if ((ret = fcntl(fd, F_SETFL, _io_map[fd]._flags )) != 0)
+    if ((ret = fcntl(fd, F_SETFL, _io_fd[fd]._flags )) != 0)
     {
       auto ec = std::make_error_code(static_cast<std::errc>(ret));
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -140,12 +147,25 @@ namespace one
     }
 
     // remove file descriptor from the I/O map
-    _io_map.erase(fd);
+    _io_fd.erase(fd);
   }
+
+  void sigio::sigio_::deactivate(const std::string fn)
+  {
+      int fd = fn.size();
+      deactivate(fd);
+  }
+
 
   bool sigio::sigio_::is_activated(int fd) const noexcept 
   {
-    return _io_map.count(fd) ? true : false;
+    return _io_fd.count(fd) ? true : false;
+  }
+
+  bool sigio::sigio_::is_activated(const std::string fn) const noexcept
+  {
+      int fd = fn.size();
+      return is_activated(fd);
   }
 
   std::error_code sigio::sigio_::try_activate(int fd, callback_t cb, seconds timeout_sec, 
@@ -168,6 +188,13 @@ namespace one
     return make_error_code(error::success);
   }
 
+  std::error_code sigio::sigio_::try_activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+                                              seconds timeout_sec, nanoseconds timeout_nsec) noexcept
+  {
+      int fd = fn.size();
+      return try_activate(fd, cb, timeout_sec, timeout_nsec);
+  }
+
   std::error_code sigio::sigio_::try_deactivate(int fd) noexcept
   {
     try
@@ -185,6 +212,13 @@ namespace one
     }
 
     return make_error_code(error::success);
+  }
+
+
+  std::error_code sigio::sigio_::try_deactivate(const std::string fn) noexcept
+  {
+      int fd = fn.size();
+      return try_deactivate(fd);
   }
 
 } // namespace one

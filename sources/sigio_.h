@@ -31,7 +31,7 @@ namespace one
     };
 
     int _signal;
-    std::map<int, io_> _io_map;
+    std::map<int, io_> _io_fd;
 
     public:
     static void sigaction_handler(int sig, siginfo_t *si, void *uc = nullptr);
@@ -52,13 +52,26 @@ namespace one
     void activate(int fd, callback_t cb,
         seconds timeout_sec = 0s,
         nanoseconds timeout_nsec = 0ns);
+
+    void activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+          seconds timeout_sec = 0s,
+          nanoseconds timeout_nsec = 0ns);
+
     void deactivate(int fd);
+    void deactivate(const std::string fn);
 
     bool is_activated(int fd) const noexcept;
+    bool is_activated(const std::string fn) const noexcept;
 
     std::error_code try_activate(int fd, callback_t cb,
          seconds timeout_sec = 0s,
          nanoseconds timeout_nsec = 0ns) noexcept;
+
+    std::error_code try_activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+         seconds timeout_sec = 0s,
+         nanoseconds timeout_nsec = 0ns) noexcept;
+
     std::error_code try_deactivate(int fd) noexcept;
+    std::error_code try_deactivate(const std::string fn) noexcept;
   };
 } //namespace posixcpp
