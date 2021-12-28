@@ -8,6 +8,8 @@
 #include <ctime>
 #include <csignal>
 #include <system_error>
+#include <string>
+#include <deque>
 
 /* Linux system headers */
 #include <syslog.h>
@@ -30,11 +32,22 @@ namespace one
       nanoseconds _timeout_nsec;
     };
 
-    int _signal;
-    std::map<int, io_> _io_fd;
+    struct inotify_io_
+    {
+        int _wd;
+        uint32_t _mask;
+        inotify_callback_t _callback;
+    };
 
-    public:
+    int _signal;
+    std::map<int, io_> _io;
+    int _inotify_fd;
+    std::map<std::string, inotify_io_> _inotify_io;
+    //std::deque<struct inotify_event>;
+
+public:
     static void sigaction_handler(int sig, siginfo_t *si, void *uc = nullptr);
+    static void inotify_handler(siginfo_t*);
     static sigio_& get();
 
     explicit sigio_(int signal = SIGRTMIN);
@@ -53,7 +66,7 @@ namespace one
         seconds timeout_sec = 0s,
         nanoseconds timeout_nsec = 0ns);
 
-    void activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+    void activate(const std::string fn, uint32_t inotify_mask, inotify_callback_t cb,
           seconds timeout_sec = 0s,
           nanoseconds timeout_nsec = 0ns);
 
@@ -67,7 +80,7 @@ namespace one
          seconds timeout_sec = 0s,
          nanoseconds timeout_nsec = 0ns) noexcept;
 
-    std::error_code try_activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+    std::error_code try_activate(const std::string fn, uint32_t inotify_mask, inotify_callback_t cb,
          seconds timeout_sec = 0s,
          nanoseconds timeout_nsec = 0ns) noexcept;
 

@@ -29,7 +29,8 @@ namespace one
     _sigio->activate(fd, cb, timeout_sec, timeout_nsec);
   }
 
-  void sigio::activate(const std::string fn, uint32_t inotify_mask, callback_t cb, seconds timeout_sec, nanoseconds timeout_nsec)
+  void sigio::activate(const std::string fn, uint32_t inotify_mask, inotify_callback_t cb,
+                       seconds timeout_sec, nanoseconds timeout_nsec)
   {
     _sigio->activate(fn, inotify_mask, cb, timeout_sec, timeout_nsec);
   }
@@ -61,7 +62,7 @@ namespace one
     return _sigio->try_activate(fd, cb, timeout_sec, timeout_nsec);
   }
 
-  std::error_code sigio::try_activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+  std::error_code sigio::try_activate(const std::string fn, uint32_t inotify_mask, inotify_callback_t cb,
                       seconds timeout_sec, nanoseconds timeout_nsec) noexcept
   {
       return _sigio->try_activate(fn, inotify_mask, cb, timeout_sec, timeout_nsec);

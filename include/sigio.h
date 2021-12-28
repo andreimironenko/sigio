@@ -30,6 +30,7 @@ namespace one {
 
     public:
     using callback_t = std::function<void(siginfo_t*)>; /**< User provided callback function type*/
+    using inotify_callback_t = std::function<void(uint32_t)>;
 
     /**
      * Defines all error codes for the timer class implementation
@@ -131,7 +132,7 @@ namespace one {
         seconds timeout_sec = 0s,
         nanoseconds timeout_nsec = 0ns);
 
-    void activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+    void activate(const std::string fn, uint32_t inotify_mask, inotify_callback_t cb,
           seconds timeout_sec = 0s,
           nanoseconds timeout_nsec = 0ns);
 
@@ -145,7 +146,7 @@ namespace one {
                                  nanoseconds timeout_nsec = 0ns) noexcept;
     std::error_code try_deactivate(int fd) noexcept;
 
-    std::error_code try_activate(const std::string fn, uint32_t inotify_mask,  callback_t cb,
+    std::error_code try_activate(const std::string fn, uint32_t inotify_mask,  inotify_callback_t cb,
                                  seconds timeout_sec = 0s, nanoseconds timeout_nsec = 0ns) noexcept;
     std::error_code try_deactivate(const std::string fn) noexcept;
   }; // class sigio

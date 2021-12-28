@@ -3,9 +3,9 @@
 
 #include <syslog.h>
 #include <time.h>
-#include <syslog.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 #include "sigio_.h"
 
@@ -15,7 +15,7 @@ namespace one
   {
     int fd = si->si_fd;
     auto& inst = get();
-    if(!inst._io_fd.count(fd))
+    if(!inst._io.count(fd))
     {
       auto ec = make_error_code(error::sig_handler_fd_unknown);
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -23,27 +23,60 @@ namespace one
     }
     
     // get user's call-back function
-    inst._io_fd[fd]._callback(si);
+    inst._io[fd]._callback(si);
+  }
+
+  void sigio::sigio_::inotify_handler(siginfo_t* si)
+  {
+      size_t nbytes;
+      auto& inst = get();
+      // check if this is inotify device
+      if(si->si_fd != inst._inotify_fd)
+      {
+          auto ec = make_error_code(error::sig_handler_fd_unknown);
+          syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+          return;
+      }
+      // check ho
+      ioctl(si->si_fd, FIONREAD, &nbytes);
+
+      for (auto& [name, io] : inst._inotify_io)
+      {
+
+
+
+      }
   }
 
   sigio::sigio_::sigio_(int sig):
-    _signal(sig)
+      _signal(sig)
   {
-    syslog(LOG_INFO, "sigio_ ctor with signal %d ", sig);
-    int ret = 0;
+      syslog(LOG_INFO, "sigio_ ctor with signal %d ", sig);
+      int ret = 0;
 
-    /* Establish handler for "I/O possible" signal */
-    struct sigaction sa;
-    sa.sa_sigaction = sigaction_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART | SA_SIGINFO;
+      /* Establish handler for "I/O possible" signal */
+      struct sigaction sa;
+      sa.sa_sigaction = sigaction_handler;
+      sigemptyset(&sa.sa_mask);
+      sa.sa_flags = SA_RESTART | SA_SIGINFO;
 
-    if ((ret = sigaction(_signal, &sa, NULL)) != 0)
-    {
-      auto ec = std::make_error_code(static_cast<std::errc>(ret));
-      syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
-      throw std::system_error(ec);
-    }
+      if ((ret = sigaction(_signal, &sa, NULL)) != 0)
+      {
+          auto ec = std::make_error_code(static_cast<std::errc>(ret));
+          syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+          throw std::system_error(ec);
+      }
+
+      // open inotify device
+      if ((_inotify_fd = inotify_init()) == -1 )
+      {
+          auto ec = std::make_error_code(static_cast<std::errc>(errno));
+          syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+          throw std::system_error(ec);
+      }
+
+      // activate inotify device entry
+      activate(_inotify_fd, inotify_handler);
   }
 
   sigio::sigio_& sigio::sigio_::get()
@@ -57,7 +90,7 @@ namespace one
     syslog(LOG_INFO, "sigio_::~sigio_()");
 
     // deactivate and erase all I/O file descriptors
-    for(auto [fd, io]: _io_fd)
+    for(auto [fd, io]: _io)
     {
       auto ec = try_deactivate(fd);
       if(ec.value() != 0)
@@ -83,7 +116,7 @@ namespace one
     int ret = 0;
     int orig_flags = 0;
 
-    if(_io_fd.count(fd))
+    if(_io.count(fd))
     {
       auto ec = make_error_code(error::activate_already_active);
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -117,21 +150,21 @@ namespace one
 
     // the file description fd is successfully configured for signal-driven I/O
     // add it to the map of descriptors
-    _io_fd[fd] = io_{orig_flags, cb, timeout_sec, timeout_nsec};
+    _io[fd] = io_{orig_flags, cb, timeout_sec, timeout_nsec};
   }
 
-  void sigio::sigio_::activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+  void sigio::sigio_::activate(const std::string fn, uint32_t inotify_mask, inotify_callback_t cb,
                                seconds timeout_sec, nanoseconds timeout_nsec)
   {
-      int fd = fn.size();
-      activate(fd, cb, timeout_sec, timeout_nsec);
+
+
   }
 
   void sigio::sigio_::deactivate(int fd)
   {
     int ret = 0;
 
-    if(!_io_fd.count(fd))
+    if(!_io.count(fd))
     {
       auto ec = make_error_code(error::activate_already_active);
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -139,7 +172,7 @@ namespace one
     }
 
     // restore saved flags for file descriptor
-    if ((ret = fcntl(fd, F_SETFL, _io_fd[fd]._flags )) != 0)
+    if ((ret = fcntl(fd, F_SETFL, _io[fd]._flags )) != 0)
     {
       auto ec = std::make_error_code(static_cast<std::errc>(ret));
       syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -147,7 +180,7 @@ namespace one
     }
 
     // remove file descriptor from the I/O map
-    _io_fd.erase(fd);
+    _io.erase(fd);
   }
 
   void sigio::sigio_::deactivate(const std::string fn)
@@ -159,7 +192,7 @@ namespace one
 
   bool sigio::sigio_::is_activated(int fd) const noexcept 
   {
-    return _io_fd.count(fd) ? true : false;
+    return _io.count(fd) ? true : false;
   }
 
   bool sigio::sigio_::is_activated(const std::string fn) const noexcept
@@ -188,11 +221,10 @@ namespace one
     return make_error_code(error::success);
   }
 
-  std::error_code sigio::sigio_::try_activate(const std::string fn, uint32_t inotify_mask, callback_t cb,
+  std::error_code sigio::sigio_::try_activate(const std::string fn, uint32_t inotify_mask, inotify_callback_t cb,
                                               seconds timeout_sec, nanoseconds timeout_nsec) noexcept
   {
-      int fd = fn.size();
-      return try_activate(fd, cb, timeout_sec, timeout_nsec);
+    return make_error_code(error::success);
   }
 
   std::error_code sigio::sigio_::try_deactivate(int fd) noexcept
