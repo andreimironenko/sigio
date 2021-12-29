@@ -11,19 +11,33 @@
 
 namespace one
 {
-  void sigio::sigio_::sigaction_handler(int sig, siginfo_t *si, void *uc)
+  void* sigio::sigio_::sig_thread(void *arg)
   {
-    int fd = si->si_fd;
-    auto& inst = get();
-    if(!inst._io.count(fd))
-    {
-      auto ec = make_error_code(error::sig_handler_fd_unknown);
-      syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
-      return;
-    }
-    
-    // get user's call-back function
-    inst._io[fd]._callback(si);
+      sigset_t* set = (sigset_t*)arg;
+      int sig;
+      siginfo_t si;
+      auto& inst = get();
+
+      while(true)
+      {
+          if((sig = sigwaitinfo(set, &si)) == -1)
+          {
+              auto ec = std::make_error_code(static_cast<std::errc>(sig));
+              syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+              continue;
+          }
+          int fd = si.si_fd;
+          if(!inst._io.count(fd))
+          {
+              auto ec = make_error_code(error::sig_handler_fd_unknown);
+              syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+              continue;
+          }
+
+          // get user's call-back function
+          inst._io[fd]._callback(&si);
+      }
+      return arg;
   }
 
   void sigio::sigio_::inotify_handler(siginfo_t* si)
@@ -42,9 +56,6 @@ namespace one
 
       for (auto& [name, io] : inst._inotify_io)
       {
-
-
-
       }
   }
 
@@ -54,13 +65,17 @@ namespace one
       syslog(LOG_INFO, "sigio_ ctor with signal %d ", sig);
       int ret = 0;
 
-      /* Establish handler for "I/O possible" signal */
-      struct sigaction sa;
-      sa.sa_sigaction = sigaction_handler;
-      sigemptyset(&sa.sa_mask);
-      sa.sa_flags = SA_RESTART | SA_SIGINFO;
+      sigemptyset(&_sig_set);
+      sigaddset(&_sig_set, _signal);
 
-      if ((ret = sigaction(_signal, &sa, NULL)) != 0)
+      if((ret = pthread_sigmask(SIG_BLOCK, &_sig_set, NULL)) !=0)
+      {
+          auto ec = std::make_error_code(static_cast<std::errc>(ret));
+          syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+          throw std::system_error(ec);
+      }
+
+      if((ret = pthread_create(&_sig_thread, NULL, &sig_thread, (void*)&_sig_set)) !=0)
       {
           auto ec = std::make_error_code(static_cast<std::errc>(ret));
           syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -87,17 +102,8 @@ namespace one
 
   sigio::sigio_::~sigio_()
   {
-    syslog(LOG_INFO, "sigio_::~sigio_()");
-
-    // deactivate and erase all I/O file descriptors
-    for(auto [fd, io]: _io)
-    {
-      auto ec = try_deactivate(fd);
-      if(ec.value() != 0)
-      {
-        syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
-      }
-    }
+      syslog(LOG_INFO, "sigio_::~sigio_()");
+      // deactivate and erase all I/O file descriptors
   }
 
   int sigio::sigio_::get_signal() const
@@ -162,25 +168,25 @@ namespace one
 
   void sigio::sigio_::deactivate(int fd)
   {
-    int ret = 0;
+      int ret = 0;
 
-    if(!_io.count(fd))
-    {
-      auto ec = make_error_code(error::activate_already_active);
-      syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
-      throw std::system_error(ec);
-    }
+      if(!is_activated(fd))
+      {
+          auto ec = make_error_code(error::deactivate_not_active);
+          syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+          throw std::system_error(ec);
+      }
 
-    // restore saved flags for file descriptor
-    if ((ret = fcntl(fd, F_SETFL, _io[fd]._flags )) != 0)
-    {
-      auto ec = std::make_error_code(static_cast<std::errc>(ret));
-      syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
-      throw std::system_error(ec);
-    }
+      // restore saved flags for file descriptor
+      if ((ret = fcntl(fd, F_SETFL, _io[fd]._flags )) != 0)
+      {
+          auto ec = std::make_error_code(static_cast<std::errc>(ret));
+          syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
+          throw std::system_error(ec);
+      }
 
-    // remove file descriptor from the I/O map
-    _io.erase(fd);
+      // remove file descriptor from the I/O map
+      _io.erase(fd);
   }
 
   void sigio::sigio_::deactivate(const std::string fn)

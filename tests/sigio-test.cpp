@@ -9,6 +9,7 @@ using namespace one;
 int SigioTest::sfd;
 struct sockaddr_un SigioTest::svaddr;
 struct sockaddr_un SigioTest::claddr;
+one::sigio& SigioTest::sio(sigio::get());
 unsigned char SigioTest::buf[BUF_SIZE];
 
 void SigioTest::io_callback(siginfo_t* si)
@@ -30,8 +31,6 @@ void SigioTest::io_callback(siginfo_t* si)
         }
         printf("\n");
       }
-
-
       break;
    
     case POLL_OUT:
@@ -66,27 +65,27 @@ void SigioTest::errExit(const char *format, ...)
 void SigioTest::start_unix_socket_server()
 {
   struct sockaddr_un svaddr, claddr;
-  int sfd, j;                                       
+  int sfda, j;
   ssize_t numBytes;
-  socklen_t len;                                   
+  socklen_t len;
   char buf[BUF_SIZE];
-  sfd = socket(AF_UNIX, SOCK_DGRAM, 0);
-  if (sfd == -1)
+  sfda = socket(AF_UNIX, SOCK_DGRAM, 0);
+  if (sfda == -1)
     errExit("socket");
 
   /* Create server socket */
-  /* Construct well-known address and bind server socket to it */                     
+  /* Construct well-known address and bind server socket to it */
   if (remove(SV_SOCK_PATH) == -1 && errno != ENOENT)
     errExit("remove-%s", SV_SOCK_PATH);
   memset(&svaddr, 0, sizeof(struct sockaddr_un));
   svaddr.sun_family = AF_UNIX;
   strncpy(svaddr.sun_path, SV_SOCK_PATH, sizeof(svaddr.sun_path) - 1);
-  if (bind(sfd, (struct sockaddr *) &svaddr, sizeof(struct sockaddr_un)) == -1)
+  if (bind(sfda, (struct sockaddr *) &svaddr, sizeof(struct sockaddr_un)) == -1)
     errExit("bind");
   /* Receive messages, convert to uppercase, and return to client */
   for (;;) {
     len = sizeof(struct sockaddr_un);
-    numBytes = recvfrom(sfd, buf, BUF_SIZE, 0,
+    numBytes = recvfrom(sfda, buf, BUF_SIZE, 0,
         (struct sockaddr *) &claddr, &len);
     if (numBytes == -1)
       errExit("recvfrom");
@@ -94,7 +93,7 @@ void SigioTest::start_unix_socket_server()
         claddr.sun_path);
     for (j = 0; j < numBytes; j++)
       buf[j] = toupper((unsigned char) buf[j]);
-    if (sendto(sfd, buf, numBytes, 0, (struct sockaddr *) &claddr, len) !=
+    if (sendto(sfda, buf, numBytes, 0, (struct sockaddr *) &claddr, len) !=
         numBytes)
       errExit("sendto");
   }
@@ -125,7 +124,7 @@ SigioTest::SigioTest()
 void SigioTest::SetUp()
 {
   // initialization or some code to run before each test
-  /* Create client socket; bind to unique pathname (based on PID) */                    
+  /* Create client socket; bind to unique pathname (based on PID) */
   sfd = socket(AF_UNIX, SOCK_DGRAM, 0); 
   EXPECT_FALSE(sfd == -1);
 
@@ -133,15 +132,14 @@ void SigioTest::SetUp()
   claddr.sun_family = AF_UNIX; 
   snprintf(claddr.sun_path, sizeof(claddr.sun_path), 
       "/tmp/ud_ucase_cl.%ld", (long) getpid()); 
-  if (bind(sfd, (struct sockaddr *) &claddr, sizeof(struct sockaddr_un)) == -1) 
-    errExit("bind"); 
+  if (bind(sfd, (struct sockaddr *) &claddr, sizeof(struct sockaddr_un)) == -1)
+    errExit("bind");
 
   /* Construct address of server */
   memset(&svaddr, 0, sizeof(struct sockaddr_un));
   svaddr.sun_family = AF_UNIX;
   strncpy(svaddr.sun_path, SV_SOCK_PATH, sizeof(svaddr.sun_path) - 1);
 
-  auto& sio = sigio::get();
   sio.activate(sfd, &SigioTest::io_callback);
 }
 
@@ -150,15 +148,13 @@ void SigioTest::TearDown()
   // code to run after each test;
   // can be used instead of a destructor,
   // but exceptions can be handled in this function only
-
-  auto& sio = sigio::get();
-  sio.deactivate(sfd);
-  close(sfd);
 }
 
 SigioTest::~SigioTest()
 {
   // resources cleanup, no exceptions allowed
+  sio.deactivate(sfd);
+  close(sfd);
 }
 
 TEST_F(SigioTest, SendReceive)
@@ -168,14 +164,14 @@ TEST_F(SigioTest, SendReceive)
   std::chrono::nanoseconds period_nsec = 0ns;
   const char* hello = "hello world!";
 
-  for(int i = 0; i < 10; i++)
+  for(int i = 0; i < 2; i++)
   {
     if (sendto(sfd, hello, sizeof(hello), 0, (struct sockaddr *) &svaddr,
           sizeof(struct sockaddr_un)) != sizeof(hello))
     {
       errExit("sendto");
     }
-    sleep(5);
+    sleep(1);
   }
 }
 

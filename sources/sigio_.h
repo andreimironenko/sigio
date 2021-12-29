@@ -13,6 +13,8 @@
 
 /* Linux system headers */
 #include <syslog.h>
+#include <pthread.h>
+
 
 /* Local headers */
 #include "sigio.h"
@@ -40,13 +42,16 @@ namespace one
     };
 
     int _signal;
+    sigset_t _sig_set;
+    pthread_t _sig_thread;
+
     std::map<int, io_> _io;
     int _inotify_fd;
     std::map<std::string, inotify_io_> _inotify_io;
     //std::deque<struct inotify_event>;
 
 public:
-    static void sigaction_handler(int sig, siginfo_t *si, void *uc = nullptr);
+    static void* sig_thread(void* arg);
     static void inotify_handler(siginfo_t*);
     static sigio_& get();
 

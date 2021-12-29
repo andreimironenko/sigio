@@ -17,6 +17,7 @@ include(VersionFromGit)
 version_from_git(GIT_EXECUTABLE "git" LOG ON TIMESTAMP "%Y%m%d%H%M%S")
 project(sigio VERSION ${VERSION})
 
+set(CMAKE_CXX_FLAGS -pthread)
 set(sigio_headers ${INCDIR}/sigio.h)
 
 include_directories(include)
@@ -45,4 +46,3 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${sigio_he
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${VERSION} SOVERSION 1)
 
 install(TARGETS ${CMAKE_PROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include)
-

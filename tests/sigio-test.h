@@ -33,6 +33,7 @@ class SigioTest: public ::testing::Test {
 
   public:
   static int sfd;
+  static one::sigio& sio;
   static struct sockaddr_un svaddr, claddr;
   static unsigned char buf[BUF_SIZE];
 
