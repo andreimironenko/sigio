@@ -47,3 +47,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}-test sigio gtest gtest_main)
 add_executable(${CMAKE_PROJECT_NAME}-example sigio-example.cpp)
 target_link_libraries(${CMAKE_PROJECT_NAME}-example sigio)
 set_property(TARGET ${CMAKE_PROJECT_NAME}-example PROPERTY CXX_STANDARD 17)
+
+add_executable(${CMAKE_PROJECT_NAME}-example-inotify sigio-example-inotify.cpp)
+target_link_libraries(${CMAKE_PROJECT_NAME}-example-inotify sigio)
+set_property(TARGET ${CMAKE_PROJECT_NAME}-example-inotify PROPERTY CXX_STANDARD 17)

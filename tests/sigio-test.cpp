@@ -12,6 +12,36 @@ struct sockaddr_un SigioTest::claddr;
 one::sigio& SigioTest::sio(sigio::get());
 unsigned char SigioTest::buf[BUF_SIZE];
 
+void loadavg_handler(struct inotify_event* i)
+{
+
+    printf("    wd =%2d; ", i->wd);
+       if (i->cookie > 0)
+           printf("cookie =%4d; ", i->cookie);
+
+       printf("mask = ");
+       if (i->mask & IN_ACCESS)        printf("IN_ACCESS ");
+       if (i->mask & IN_ATTRIB)        printf("IN_ATTRIB ");
+       if (i->mask & IN_CLOSE_NOWRITE) printf("IN_CLOSE_NOWRITE ");
+       if (i->mask & IN_CLOSE_WRITE)   printf("IN_CLOSE_WRITE ");
+       if (i->mask & IN_CREATE)        printf("IN_CREATE ");
+       if (i->mask & IN_DELETE)        printf("IN_DELETE ");
+       if (i->mask & IN_DELETE_SELF)   printf("IN_DELETE_SELF ");
+       if (i->mask & IN_IGNORED)      printf("IN_IGNORED ");
+       if (i->mask & IN_ISDIR)      printf("IN_ISDIR ");
+       if (i->mask & IN_MODIFY)        printf("IN_MODIFY ");
+       if (i->mask & IN_MOVE_SELF)  printf("IN_MOVE_SELF ");
+       if (i->mask & IN_MOVED_FROM)    printf("IN_MOVED_FROM ");
+       if (i->mask & IN_MOVED_TO)    printf("IN_MOVED_TO ");
+       if (i->mask & IN_OPEN)        printf("IN_OPEN ");
+       if (i->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
+       if (i->mask & IN_UNMOUNT)      printf("IN_UNMOUNT ");
+       printf("\n");
+
+       if (i->len > 0)
+           printf("        name = %s\n", i->name);
+}
+
 void SigioTest::io_callback(siginfo_t* si)
 {
   printf("+++ io_callback +++");
@@ -175,16 +205,17 @@ TEST_F(SigioTest, SendReceive)
   }
 }
 
-TEST_F(SigioTest, StopStart)
+TEST_F(SigioTest, ReadLoadavg)
 {
   EXPECT_TRUE(true);
   std::chrono::seconds period_sec = 5s;
   std::chrono::nanoseconds period_nsec = 0ns;
+  std::string loadavg = "/home/andrei/tmp/loadavg";
+  sio.activate(loadavg, IN_ALL_EVENTS, loadavg_handler);
+  while(true)
+  {
+      sleep(1);
+      printf("looping ...\n");
+  }
 }
 
-TEST_F(SigioTest, Reset)
-{
-  EXPECT_TRUE(true);
-  std::chrono::seconds period_sec = 5s;
-  std::chrono::nanoseconds period_nsec = 0ns;
-}

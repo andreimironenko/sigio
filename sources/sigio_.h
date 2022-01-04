@@ -2,11 +2,13 @@
 
 /* STL C++ headers */
 #include <map>
+#include <vector>
 #include <memory>
 #include <ratio>
 #include <chrono>
 #include <ctime>
 #include <csignal>
+#include <climits>
 #include <system_error>
 #include <string>
 #include <deque>
@@ -14,6 +16,7 @@
 /* Linux system headers */
 #include <syslog.h>
 #include <pthread.h>
+//#include <limits.h>
 
 
 /* Local headers */
@@ -36,9 +39,9 @@ namespace one
 
     struct inotify_io_
     {
-        int _wd;
-        uint32_t _mask;
-        inotify_callback_t _callback;
+        int wd;
+        uint32_t mask;
+        inotify_callback_t callback;
     };
 
     int _signal;
@@ -48,9 +51,10 @@ namespace one
     std::map<int, io_> _io;
     int _inotify_fd;
     std::map<std::string, inotify_io_> _inotify_io;
-    //std::deque<struct inotify_event>;
+    std::vector<uint8_t> _inotify_buff;
 
 public:
+    static const size_t INOTIFY_BUFF_SIZE = 10*(sizeof(struct inotify_event) + NAME_MAX);
     static void* sig_thread(void* arg);
     static void inotify_handler(siginfo_t*);
     static sigio_& get();

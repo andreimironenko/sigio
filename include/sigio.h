@@ -30,7 +30,7 @@ namespace one {
 
     public:
     using callback_t = std::function<void(siginfo_t*)>; /**< User provided callback function type*/
-    using inotify_callback_t = std::function<void(uint32_t)>;
+    using inotify_callback_t = std::function<void(struct inotify_event*)>;
 
     /**
      * Defines all error codes for the timer class implementation
