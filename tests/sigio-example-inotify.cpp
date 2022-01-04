@@ -74,6 +74,9 @@ int main()
 {
     auto& sio = sigio::get();
     std::string loadavg = "/proc/interrupts";
+    //std::string loadavg = "/proc/uptime";
+    //std::string loadavg = "/sys/class/leds/input3::numlock/uevent";
+    //std::string loadavg = "/sys/class/input/input119/uevent";
     sio.activate(loadavg, IN_ALL_EVENTS, loadavg_handler);
     sio.is_activated(loadavg) ? printf("%s is activated \n", loadavg.c_str()): printf("%s is not activated \n", loadavg.c_str());
     while(true)

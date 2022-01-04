@@ -89,10 +89,10 @@ namespace one
          syslog(LOG_DEBUG, "TP:l.%d event->mask = %d", __LINE__, event->mask);
          syslog(LOG_DEBUG, "TP:l.%d event->cookie = %d", __LINE__, event->cookie);
 
-         if(event->len > 0 && inst.is_activated(event->name))
+         if(inst._inotify_io.count(event->wd))
          {
              syslog(LOG_DEBUG, "TP: l.%d\n", __LINE__);
-             inst._inotify_io[event->name].callback(event);
+             inst._inotify_io[event->wd].callback(event);
              p += sizeof(struct inotify_event) + event->len;
          }
          else
@@ -217,7 +217,7 @@ namespace one
                    seconds timeout_sec, nanoseconds timeout_nsec)
   {
       int wd;
-      if(_inotify_io.count(fn))
+      if(_inotify_wd.count(fn))
       {
           syslog(LOG_INFO, "%s it's already been watched", fn.c_str());
           return;
@@ -230,7 +230,8 @@ namespace one
           throw std::system_error(ec);
       }
 
-      _inotify_io[fn] = inotify_io_{wd, inotify_mask, cb};
+      _inotify_io[wd] = inotify_io_{inotify_mask, cb};
+      _inotify_wd[fn] = wd;
   }
 
   void sigio::sigio_::deactivate(int fd)
@@ -268,7 +269,8 @@ namespace one
       }
 
       // remove existing inotify watch
-      if((ret = inotify_rm_watch(_inotify_fd, _inotify_io[fn].wd )) == -1)
+      auto wd = _inotify_wd[fn];
+      if((ret = inotify_rm_watch(_inotify_fd, wd)) == -1)
       {
           auto ec = std::make_error_code(static_cast<std::errc>(ret));
           syslog(LOG_ERR, "error %d: %s", ec.value(), ec.message().c_str());
@@ -276,10 +278,9 @@ namespace one
       }
 
       // remove file descriptor from the I/O map
-      _inotify_io.erase(fn);
+      _inotify_io.erase(wd);
+      _inotify_wd.erase(fn);
   }
-
-
 
   bool sigio::sigio_::is_activated(int fd) const noexcept 
   {
@@ -288,7 +289,7 @@ namespace one
 
   bool sigio::sigio_::is_activated(const std::string fn) const noexcept
   {
-      return _inotify_io.count(fn) ? true : false;
+      return _inotify_wd.count(fn) ? true : false;
   }
 
   std::error_code sigio::sigio_::try_activate(int fd, callback_t cb, seconds timeout_sec, 

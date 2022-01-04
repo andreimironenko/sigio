@@ -39,7 +39,6 @@ namespace one
 
     struct inotify_io_
     {
-        int wd;
         uint32_t mask;
         inotify_callback_t callback;
     };
@@ -50,11 +49,12 @@ namespace one
 
     std::map<int, io_> _io;
     int _inotify_fd;
-    std::map<std::string, inotify_io_> _inotify_io;
+    std::map<std::string, int> _inotify_wd;
+    std::map<int, inotify_io_> _inotify_io;
     std::vector<uint8_t> _inotify_buff;
 
 public:
-    static const size_t INOTIFY_BUFF_SIZE = 10*(sizeof(struct inotify_event) + NAME_MAX);
+    static const size_t INOTIFY_BUFF_SIZE = 10*(sizeof(struct inotify_event) + NAME_MAX +1);
     static void* sig_thread(void* arg);
     static void inotify_handler(siginfo_t*);
     static sigio_& get();

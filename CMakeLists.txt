@@ -17,7 +17,10 @@ include(VersionFromGit)
 version_from_git(GIT_EXECUTABLE "git" LOG ON TIMESTAMP "%Y%m%d%H%M%S")
 project(sigio VERSION ${VERSION})
 
-set(CMAKE_CXX_FLAGS -pthread)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
+#add_compile_options(-pthread)
+
 set(sigio_headers ${INCDIR}/sigio.h)
 
 include_directories(include)
