@@ -43,7 +43,6 @@ void loadavg_handler(struct inotify_event* i)
 {
 
     printf("    wd =%2d; ", i->wd);
-    EAGAIN;
        if (i->cookie > 0)
            printf("cookie =%4d; ", i->cookie);
 
