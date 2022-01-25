@@ -1,0 +1,14 @@
+=====================================================================
+RELEASE 1.1.2
+ISSUEDBY Andrei Mironenko
+
+DATE 2022-01-25 20:35:18.323496
+=====================================================================
+b3abe94 Tue Jan 25 20:33:50 2022 +0000 Andrei Mironenko Adding ChangeLog
+144c1c2 Wed Jan 12 21:13:10 2022 +0000 Andrei Mironenko Adding sigio-example-inotify
+cde9288 Tue Jan 4 22:49:40 2022 +0000 Andrei Mironenko Fixing sigio-example-inotify
+291272b Tue Jan 4 00:00:32 2022 +0000 Andrei Mironenko Fixing runtime issues
+c0e3764 Wed Dec 29 01:55:24 2021 +0000 Andrei Mironenko Moving from sigaction and signal handler to sigwaitinfo
+dfc8290 Tue Dec 28 01:33:49 2021 +0000 Andrei Mironenko The inotify API is half-implemented
+ea58827 Sun Dec 12 01:04:40 2021 +0000 Andrei Mironenko Adding inotify interface
+bfeb149 Wed Nov 24 23:21:22 2021 +0000 Andrei Mironenko Fixing googletest to release-1.11.0
