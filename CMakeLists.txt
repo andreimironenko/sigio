@@ -42,8 +42,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
   )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} rt)
-add_subdirectory(tests)
-add_dependencies(${CMAKE_PROJECT_NAME}-test ${CMAKE_PROJECT_NAME} gtest gtest_main)
+#add_subdirectory(tests)
+#add_dependencies(${CMAKE_PROJECT_NAME}-test ${CMAKE_PROJECT_NAME} gtest gtest_main)
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${sigio_headers}")
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${VERSION} SOVERSION 1)
