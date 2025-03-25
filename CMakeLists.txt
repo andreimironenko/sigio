@@ -34,18 +34,33 @@ include_directories(sources)
 #add_dependencies(Sphinx Doxygen ${CMAKE_PROJECT_NAME}_timer)
 #add_dependencies(pdf Sphinx Doxygen ${CMAKE_PROJECT_NAME}_timer)
 
-add_library(${CMAKE_PROJECT_NAME} SHARED
+add_library(sigio SHARED
   include/sigio.h
   sources/sigio.cpp
   sources/sigio_.cpp
   sources/sigio_.h
   )
 
-target_link_libraries(${CMAKE_PROJECT_NAME} rt)
+target_link_libraries(sigio rt)
 #add_subdirectory(tests)
 #add_dependencies(${CMAKE_PROJECT_NAME}-test ${CMAKE_PROJECT_NAME} gtest gtest_main)
 
-set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${sigio_headers}")
-set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${VERSION} SOVERSION 1)
+set_target_properties(sigio PROPERTIES PUBLIC_HEADER "${sigio_headers}")
+set_target_properties(sigio PROPERTIES VERSION ${VERSION} SOVERSION 1)
 
-install(TARGETS ${CMAKE_PROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include)
+# install sigio library and headers
+install(TARGETS sigio EXPORT SigioTargets LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include)
+
+# export targets
+set(EXPORT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cmake")
+export(EXPORT SigioTargets
+  FILE "${EXPORT_DIR}/SigioTargets.cmake"
+  NAMESPACE sigio::
+  )
+
+# install targets
+install(EXPORT SigioTargets
+  FILE SigioTargets.cmake
+  NAMESPACE sigio::
+  DESTINATION lib/cmake/sigio
+  )
