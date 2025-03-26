@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.23)
 
 project(sigio)
 
@@ -48,6 +48,7 @@ target_link_libraries(sigio rt)
 set_target_properties(sigio PROPERTIES PUBLIC_HEADER "${sigio_headers}")
 set_target_properties(sigio PROPERTIES VERSION ${VERSION} SOVERSION 1)
 
+include (GNUInstallDirs)
 # install sigio library and headers
 install(TARGETS sigio EXPORT SigioTargets LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include)
 
